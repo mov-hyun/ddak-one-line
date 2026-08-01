@@ -2,7 +2,7 @@
 
 > 사람과 물건을 한 줄로 말하면, 발송 위험을 먼저 판단하고 우체국 접수 직전까지 준비하는 실행형 AI 에이전트
 
-딱한줄은 디지털 서비스 이용이 어려운 고령자와 느린학습자를 위한 Agent24 해커톤 프로토타입입니다. 사용자는 사이트 메뉴와 입력 순서를 익히는 대신 `큰딸에게 사과를 소포로 부치고 싶어`처럼 목표만 말합니다. 에이전트는 배송 경로와 물품 위험을 판단하고, 로컬 개인정보 Vault의 참조값을 사용해 실제 인터넷우체국 화면을 조작합니다.
+딱한줄은 디지털 서비스 이용이 어려운 고령자와 느린학습자를 위한 Agent24 해커톤 프로토타입입니다. 사용자는 사이트 메뉴와 입력 순서를 익히는 대신 `큰딸에게 사과를 소포로 부치고 싶어`처럼 목표만 말합니다. 종이에 적어둔 주소가 있다면 `쪽지 사진`으로 보내는 분과 받는 분 정보를 한 번에 불러올 수도 있습니다. 에이전트는 배송 경로와 물품 위험을 판단하고, 로컬 개인정보 Vault의 참조값을 사용해 실제 인터넷우체국 화면을 조작합니다.
 
 이 저장소는 심사용 코드와 Pipeline Architecture 재현 자료를 제공합니다. 별도의 운영 서비스나 공개 데모 URL은 제공하지 않습니다.
 
@@ -11,6 +11,9 @@
 ```mermaid
 flowchart LR
     U["사용자 목표 한 줄"] --> API["FastAPI + WebSocket"]
+    PHOTO["주소 쪽지 사진"] --> OCR["OpenAI Vision 구조화 추출"]
+    OCR --> REVIEW["사용자 확인·수정"]
+    REVIEW --> VAULT
     API --> AGENT["OpenAI Agents SDK"]
     AGENT --> ROUTE["서비스 어댑터 선택"]
     ROUTE --> POLICY["발송 정책 사전 판단"]
@@ -28,12 +31,13 @@ flowchart LR
 
 처리 순서는 다음과 같습니다.
 
-1. `select_service_adapter`가 목표를 등록된 우편 어댑터와 대조합니다.
-2. `resolve_household_contact`가 관계 표현을 개인정보 원문이 아닌 `contact_ref`로 바꿉니다.
-3. `assess_shipment_policy`가 목적지와 물품을 브라우저 실행 전에 판정합니다.
-4. `stage_postal_parcel`이 로컬 Vault에서 필요한 값을 꺼내 Playwright 어댑터에 전달합니다.
-5. `verify_epost_stage`가 입력 결과와 현재 화면을 검증합니다.
-6. 에이전트는 `접수신청` 직전에 멈추고 사용자 확인 화면으로 제어권을 넘깁니다.
+1. 선택 사항으로 `쪽지 사진`을 읽어 발신인·수신인·우편번호·주소·연락처·내용물을 분리하고, 사용자가 결과를 확인하면 암호화 Vault에 저장합니다.
+2. `select_service_adapter`가 목표를 등록된 우편 어댑터와 대조합니다.
+3. `resolve_household_contact`가 관계 표현을 개인정보 원문이 아닌 `contact_ref`로 바꿉니다.
+4. `assess_shipment_policy`가 목적지와 물품을 브라우저 실행 전에 판정합니다.
+5. `stage_postal_parcel`이 로컬 Vault에서 필요한 값을 꺼내 Playwright 어댑터에 전달합니다.
+6. `verify_epost_stage`가 입력 결과와 현재 화면을 검증합니다.
+7. 에이전트는 `접수신청` 직전에 멈추고 사용자 확인 화면으로 제어권을 넘깁니다.
 
 ## 평가 근거가 되는 구현
 
@@ -43,6 +47,7 @@ flowchart LR
 | Tool boundary | 어댑터 선택, 연락처 참조, 정책 판정, 실행, 검증 | `app/tools.py` |
 | Adapter layer | 사이트별 실행을 공통 인터페이스와 registry로 격리 | `app/adapters/` |
 | Shipping intelligence | 국내·EMS 분기와 위험 물품 사전 차단 | `app/shipping_policy.py`, `app/shipping_rules.json` |
+| Address-note OCR | 쪽지 사진에서 발신인·수신인 정보를 구조화하고 확인 UI로 전달 | `app/ocr.py`, `web/app.js` |
 | Privacy Vault | 연락처 payload를 Fernet으로 암호화해 로컬 SQLite에 저장 | `app/vault.py` |
 | Safety boundary | 최종 제출 차단과 명시적 수동 인계 | `app/adapters/epost.py`, `web/handoff.html` |
 | Observability | 제품 이벤트와 Raw Responses API 이벤트 분리 | `app/events.py`, `app/main.py` |
@@ -52,6 +57,8 @@ flowchart LR
 ## 현재 데모 범위
 
 - 우체국 창구소포 간편사전접수 비회원 국내소포 경로
+- JPG·PNG·WEBP 주소 쪽지 사진 OCR과 발신인·수신인 자동 분리(최대 8MB)
+- OCR 결과의 이름·우편번호·주소·상세주소·연락처·내용물 확인 및 수정
 - 국내 주소는 국내소포, 해외 주소는 EMS로 라우팅
 - 생과일 등 위험 물품을 브라우저 실행 전에 차단
 - 실제 인터넷우체국 입력 화면을 500ms 주기로 스트리밍
@@ -99,7 +106,9 @@ uv run pytest
 ## 개인정보와 안전 원칙
 
 - API key, `.env.local`, 로컬 DB, Vault 암호화 키, 실행 로그와 녹화물은 저장소에 포함하지 않습니다.
-- 모델에는 이름·주소·전화번호 원문 대신 관계와 `contact_ref`만 전달합니다.
+- 일반 한 줄 실행에서는 모델에 이름·주소·전화번호 원문 대신 관계와 `contact_ref`만 전달합니다.
+- OCR 기능은 사용자가 직접 선택한 사진 한 장만 OpenAI 이미지 입력으로 전송하며, 앱은 원본 사진을 파일로 저장하지 않습니다.
+- OCR 추출값은 사용자가 확인한 뒤 로컬 암호화 Vault에 저장됩니다. 읽기 어려운 값은 임의로 만들지 않고 확인 경고로 표시합니다.
 - 저장소의 연락처는 프로토타입 동작을 위한 비실사용 데모 fixture입니다.
 - 에이전트는 사용자가 말하지 않은 무게·크기·결제수단을 임의로 결정하지 않습니다.
 - 실제 접수는 자동 완료되지 않습니다. 사용자의 명시적 확인이 마지막 단계에 필요합니다.

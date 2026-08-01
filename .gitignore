@@ -1,0 +1,41 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python and local tooling
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.playwright-cli/
+
+# Local runtime data
+data/
+output/*
+!output/imagegen/
+output/imagegen/*
+!output/imagegen/idle-shipping-intelligence.png
+!output/imagegen/decision-clear.png
+!output/imagegen/decision-review.png
+!output/imagegen/decision-blocked.png
+artifacts/
+*.log
+*.mp4
+
+# Local contest and working documents
+TalkFile_AGENT24_Opening_RulesBriefing.pdf
+AGENT24_PROJECT_PLAN.md
+AGENT24_PRESENTATION_DECK_PLAN.md
+AGENT24_WORKING_CONTEXT.md
+HANJUL_CONSOLE_DESIGN.md
+HANJUL_UI_SPEC.md
+design-qa.md
+web/video-intro.html
+web/assets/02.png
+scripts/capture_video_intro.py
+
+# OS metadata
+.DS_Store
+Thumbs.db

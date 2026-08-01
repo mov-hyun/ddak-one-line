@@ -1,0 +1,25 @@
+[project]
+name = "ddak-one-line"
+version = "0.1.0"
+description = "딱한줄 - 복잡한 웹을 한 줄로 끝내는 실행 에이전트"
+requires-python = ">=3.12"
+dependencies = [
+  "cryptography>=44.0.0",
+  "fastapi>=0.116.0",
+  "openai-agents>=0.2.0",
+  "playwright>=1.54.0",
+  "python-dotenv>=1.1.0",
+  "uvicorn[standard]>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28.0",
+  "pytest>=8.4.0",
+  "pytest-asyncio>=1.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"

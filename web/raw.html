@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>딱한줄 · Raw API Stream</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="raw-shell">
+  <header class="raw-header">
+    <h1>OPENAI RAW API STREAM</h1>
+    <p>Responses API 원본 이벤트 · 발생 순서 그대로 · 개인정보 원문 제외</p>
+    <button id="pauseRaw" type="button">일시정지</button>
+  </header>
+  <main class="raw-log" id="rawLog"><div class="raw-empty">원본 이벤트 대기</div></main>
+  <script>
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const log = document.getElementById("rawLog");
+    const pause = document.getElementById("pauseRaw");
+    let paused = false;
+    let queued = [];
+    function append(text) {
+      const line = document.createElement("div");
+      line.className = `raw-line${/(tool_call|tool_result|function_call|function_call_output)/.test(text) ? " is-tool" : ""}`;
+      line.textContent = text;
+      log.querySelector(".raw-empty")?.remove();
+      log.appendChild(line);
+      window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
+    }
+    pause.addEventListener("click", () => {
+      paused = !paused;
+      pause.textContent = paused ? `계속 (${queued.length})` : "일시정지";
+      if (!paused) queued.splice(0).forEach(append);
+    });
+    function connect() {
+      const socket = new WebSocket(`${protocol}://${location.host}/ws/raw`);
+      socket.onmessage = ({data}) => paused ? queued.push(data) : append(data);
+      socket.onclose = () => setTimeout(connect, 1200);
+    }
+    connect();
+  </script>
+</body>
+</html>

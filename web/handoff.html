@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>딱한줄 · 사용자 최종 확인</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="handoff-shell">
+  <main class="handoff-layout">
+    <section class="handoff-view">
+      <header><h1>실제 우체국 화면</h1><p>에이전트가 멈춘 동일한 브라우저 세션입니다.</p></header>
+      <div id="handoffUrl" class="handoff-url">연결 중…</div>
+      <div class="handoff-screen"><img id="handoffFrame" alt="실제 인터넷우체국 접수 화면"><div id="handoffWait" class="handoff-wait">실제 화면 연결 중</div></div>
+    </section>
+    <aside class="handoff-actions">
+      <header><h2>최종 결정</h2><p>실제 접수는 아래에서 사용자가 직접 선택할 때만 진행됩니다.</p></header>
+      <div class="handoff-action-body">
+        <div id="handoffStatus" class="handoff-status">안전 중단 상태를 확인하고 있습니다.</div>
+        <div class="handoff-buttons">
+          <button id="cancelHandoff" type="button">접수하지 않기</button>
+          <button id="submitFinal" class="submit-final" type="button" disabled>실제 접수신청</button>
+        </div>
+        <section id="siteDialog" class="site-dialog" hidden>
+          <strong>우체국 최종 확인</strong>
+          <p id="dialogMessage"></p>
+          <div><button id="dismissDialog" type="button">취소</button><button id="acceptDialog" class="dialog-accept" type="button">확인하고 진행</button></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const runId = params.get("run_id") || "";
+    const frame = document.getElementById("handoffFrame");
+    const wait = document.getElementById("handoffWait");
+    const statusBox = document.getElementById("handoffStatus");
+    const submit = document.getElementById("submitFinal");
+    const cancel = document.getElementById("cancelHandoff");
+    const dialog = document.getElementById("siteDialog");
+    const dialogMessage = document.getElementById("dialogMessage");
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+
+    async function post(path, body = {}) {
+      const response = await fetch(path, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail || "요청을 처리하지 못했습니다.");
+      return payload;
+    }
+
+    function showFrame(data, url) {
+      if (data) { frame.src = `data:image/jpeg;base64,${data}`; frame.style.display = "block"; wait.hidden = true; }
+      if (url) document.getElementById("handoffUrl").textContent = url.replace(/^https?:\/\//, "");
+    }
+
+    function showDialog(message) {
+      dialogMessage.textContent = message;
+      dialog.hidden = false;
+      submit.disabled = true;
+    }
+
+    async function activate() {
+      if (!/^[a-f0-9]{12}$/.test(runId)) throw new Error("유효한 실행 ID가 없습니다.");
+      const ready = await post(`/api/handoff/${runId}/activate`);
+      showFrame(ready.frame_data, ready.url);
+      statusBox.textContent = "접수신청 직전입니다. 화면을 확인한 뒤 진행 여부를 선택하세요.";
+      submit.disabled = false;
+      const socket = new WebSocket(`${protocol}://${location.host}/ws/handoff/${runId}`);
+      socket.onmessage = ({data}) => {
+        const message = JSON.parse(data);
+        if (message.type === "frame") showFrame(message.data, message.url);
+        if (message.type === "dialog") showDialog(message.message);
+      };
+    }
+
+    cancel.addEventListener("click", async () => {
+      try {
+        await post(`/api/handoff/${runId}/cancel`);
+        statusBox.textContent = "접수하지 않기로 했습니다. 실제 접수는 발생하지 않았습니다.";
+        submit.disabled = true; cancel.disabled = true; dialog.hidden = true;
+      } catch (error) { statusBox.textContent = error.message; }
+    });
+
+    submit.addEventListener("click", async () => {
+      if (!confirm("실제 우체국 접수신청을 진행할까요? 이후 우체국 확인창에서도 직접 확인해야 합니다.")) return;
+      submit.disabled = true;
+      statusBox.textContent = "우체국 접수신청 버튼을 눌렀습니다. 사이트의 최종 확인을 기다립니다.";
+      try {
+        const result = await post(`/api/handoff/${runId}/submit`, {confirmed: true});
+        if (result.status === "confirmation_required") showDialog(result.message);
+        else statusBox.textContent = result.message;
+      } catch (error) { statusBox.textContent = error.message; submit.disabled = false; }
+    });
+
+    document.getElementById("dismissDialog").addEventListener("click", async () => {
+      try { const result = await post(`/api/handoff/${runId}/dialog`, {accept: false}); dialog.hidden = true; statusBox.textContent = result.message; }
+      catch (error) { statusBox.textContent = error.message; }
+    });
+    document.getElementById("acceptDialog").addEventListener("click", async () => {
+      if (!confirm("우체국 최종 확인을 승인해 실제 접수를 완료할까요?")) return;
+      try { const result = await post(`/api/handoff/${runId}/dialog`, {accept: true}); dialog.hidden = true; statusBox.textContent = result.message; }
+      catch (error) { statusBox.textContent = error.message; }
+    });
+
+    activate().catch((error) => { statusBox.textContent = error.message; submit.disabled = true; });
+  </script>
+</body>
+</html>

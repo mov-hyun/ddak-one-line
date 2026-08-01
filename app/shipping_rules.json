@@ -1,0 +1,47 @@
+{
+  "default_source": {
+    "title": "인터넷우체국 국제우편 스마트접수",
+    "url": "https://ems.epost.go.kr/front.EmsApply1100c.postal?prepayYn=N"
+  },
+  "rules": [
+    {
+      "id": "us_fresh_produce",
+      "destination_countries": ["US"],
+      "services": ["ems"],
+      "keywords": ["사과", "생과일", "과일", "apple", "fresh fruit", "배 ", "복숭아", "딸기"],
+      "decision": "blocked",
+      "category": "fresh_produce",
+      "plain_summary": "생사과는 미국으로 바로 보낼 수 없어요.",
+      "reason": "미국은 해외에서 들어오는 대부분의 생과일을 병해충 위험 때문에 제한합니다.",
+      "next_action": "가공·조리된 대체품을 선택하거나 미국 농업검역 요건을 먼저 확인해 주세요.",
+      "source_title": "USDA APHIS · Shipping Plants, Food, and Other Agricultural Items",
+      "source_url": "https://www.aphis.usda.gov/plant-imports/shipping-plants-food-other-agricultural-items-express-courier"
+    },
+    {
+      "id": "international_air_security_goods",
+      "destination_countries": ["*"],
+      "services": ["ems"],
+      "keywords": ["향수", "스프레이", "에어로졸", "배터리", "리튬", "perfume", "spray", "aerosol", "battery", "lithium"],
+      "decision": "blocked",
+      "category": "air_security_goods",
+      "plain_summary": "이 물건은 항공우편으로 바로 보낼 수 없어요.",
+      "reason": "향수·스프레이·배터리류는 항공보안 금제품에 해당할 수 있어 반송될 위험이 큽니다.",
+      "next_action": "제품의 정확한 성분과 배터리 포함 여부를 우체국에서 먼저 확인해 주세요.",
+      "source_title": "인터넷우체국 · 국제우편 주요 안내사항",
+      "source_url": "https://ems.epost.go.kr/front.EmsApply1100c.postal?prepayYn=N"
+    },
+    {
+      "id": "us_food_prior_notice",
+      "destination_countries": ["US"],
+      "services": ["ems"],
+      "keywords": ["김치", "라면", "과자", "사탕", "식품", "음식", "food", "snack", "candy"],
+      "decision": "needs_review",
+      "category": "food",
+      "plain_summary": "미국행 식품은 한 가지 확인이 필요해요.",
+      "reason": "직접 만든 개인 선물인지, 구매한 제품인지에 따라 미국 사전신고 적용이 달라질 수 있습니다.",
+      "next_action": "누가 만들었고 어디에서 구입했는지 확인한 뒤 접수를 진행해 주세요.",
+      "source_title": "U.S. FDA · Prior Notice Policy for Gifts",
+      "source_url": "https://www.fda.gov/industry/prior-notice-imported-foods/prior-notice-policy-sending-gifts-your-friends-and-family"
+    }
+  ]
+}

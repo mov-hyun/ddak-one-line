@@ -47,6 +47,28 @@ const rawPopup = document.getElementById("rawPopup");
 const rawClose = document.getElementById("rawClose");
 const rawPause = document.getElementById("rawPause");
 const rawPopupLog = document.getElementById("rawPopupLog");
+const ocrOpen = document.getElementById("ocrOpen");
+const ocrFile = document.getElementById("ocrFile");
+const ocrPanel = document.getElementById("ocrPanel");
+const ocrClose = document.getElementById("ocrClose");
+const ocrLoading = document.getElementById("ocrLoading");
+const ocrReviewForm = document.getElementById("ocrReviewForm");
+const ocrError = document.getElementById("ocrError");
+const ocrWarnings = document.getElementById("ocrWarnings");
+const ocrSubmit = document.getElementById("ocrSubmit");
+const ocrFields = {
+  senderName: document.getElementById("ocrSenderName"),
+  senderPostal: document.getElementById("ocrSenderPostal"),
+  senderAddress: document.getElementById("ocrSenderAddress"),
+  senderDetail: document.getElementById("ocrSenderDetail"),
+  senderPhone: document.getElementById("ocrSenderPhone"),
+  recipientName: document.getElementById("ocrRecipientName"),
+  recipientPostal: document.getElementById("ocrRecipientPostal"),
+  recipientAddress: document.getElementById("ocrRecipientAddress"),
+  recipientDetail: document.getElementById("ocrRecipientDetail"),
+  recipientPhone: document.getElementById("ocrRecipientPhone"),
+  contents: document.getElementById("ocrContents"),
+};
 
 const protocol = location.protocol === "https:" ? "wss" : "ws";
 const socket = new WebSocket(`${protocol}://${location.host}/ws/run`);
@@ -63,6 +85,102 @@ let termsTimer = null;
 let runFinished = false;
 let needsInformation = false;
 let resolvedContactLabel = "받는 분";
+let ocrResult = null;
+
+ocrOpen.addEventListener("click", () => { if (!sent) ocrFile.click(); });
+ocrClose.addEventListener("click", () => { if (!ocrLoading.hidden) return; ocrPanel.hidden = true; });
+ocrFile.addEventListener("change", async () => {
+  const file = ocrFile.files?.[0];
+  ocrFile.value = "";
+  if (!file) return;
+  ocrPanel.hidden = false;
+  ocrLoading.hidden = false;
+  ocrReviewForm.hidden = true;
+  ocrError.hidden = true;
+  if (file.size > 8 * 1024 * 1024) {
+    ocrLoading.hidden = true;
+    ocrError.textContent = "사진은 8MB 이하만 사용할 수 있습니다.";
+    ocrError.hidden = false;
+    return;
+  }
+  try {
+    const imageBase64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",", 2)[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const response = await fetch("/api/ocr/address-note", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({image_base64: imageBase64, mime_type: file.type}),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "쪽지를 읽지 못했습니다.");
+    ocrResult = payload;
+    const sender = payload.sender || {};
+    const recipient = payload.recipient || {};
+    ocrFields.senderName.value = sender.name_ko || sender.name_en || "";
+    ocrFields.senderPostal.value = sender.postal_code || "";
+    ocrFields.senderAddress.value = sender.address_base || sender.address || "";
+    ocrFields.senderDetail.value = sender.address_detail || "";
+    ocrFields.senderPhone.value = sender.phone || "";
+    ocrFields.recipientName.value = recipient.name_ko || recipient.name_en || "";
+    ocrFields.recipientPostal.value = recipient.postal_code || "";
+    ocrFields.recipientAddress.value = recipient.address_base || recipient.address || "";
+    ocrFields.recipientDetail.value = recipient.address_detail || "";
+    ocrFields.recipientPhone.value = recipient.phone || "";
+    ocrFields.contents.value = payload.contents || "사과";
+    const warnings = payload.warnings || [];
+    ocrWarnings.textContent = warnings.join(" · ");
+    ocrWarnings.hidden = warnings.length === 0;
+    ocrReviewForm.hidden = false;
+  } catch (error) {
+    ocrError.textContent = error.message || "쪽지를 읽지 못했습니다.";
+    ocrError.hidden = false;
+  } finally {
+    ocrLoading.hidden = true;
+  }
+});
+
+ocrReviewForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!ocrResult || !ocrReviewForm.reportValidity()) return;
+  ocrSubmit.disabled = true;
+  ocrSubmit.textContent = "안전하게 불러오는 중";
+  const makeParty = (original, name, postal, address, detail, phone) => ({
+    ...original,
+    name_ko: name.value.trim(),
+    postal_code: postal.value.trim(),
+    address: [address.value.trim(), detail.value.trim()].filter(Boolean).join(" "),
+    address_base: address.value.trim(),
+    address_detail: detail.value.trim(),
+    phone: phone.value.trim(),
+  });
+  try {
+    const response = await fetch("/api/ocr/contacts", {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({
+        sender: makeParty(ocrResult.sender, ocrFields.senderName, ocrFields.senderPostal, ocrFields.senderAddress, ocrFields.senderDetail, ocrFields.senderPhone),
+        recipient: makeParty(ocrResult.recipient, ocrFields.recipientName, ocrFields.recipientPostal, ocrFields.recipientAddress, ocrFields.recipientDetail, ocrFields.recipientPhone),
+        contents: ocrFields.contents.value.trim(),
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "주소 정보를 불러오지 못했습니다.");
+    ocrPanel.hidden = true;
+    goalInput.value = payload.goal;
+    resolvedContactLabel = payload.recipient_label || "쪽지 받는 분";
+    form.requestSubmit();
+  } catch (error) {
+    ocrError.textContent = error.message || "주소 정보를 불러오지 못했습니다.";
+    ocrError.hidden = false;
+  } finally {
+    ocrSubmit.disabled = false;
+    ocrSubmit.textContent = "이 정보로 접수 준비";
+  }
+});
 
 missingInfoClose.addEventListener("click", () => { missingInfoPopup.hidden = true; });
 emsCustomsForm.addEventListener("submit", async (event) => {
@@ -442,6 +560,7 @@ form.addEventListener("submit", (event) => {
   decisionPanel.hidden = true;
   goalInput.disabled = true;
   runButton.disabled = true;
+  ocrOpen.disabled = true;
   runButton.textContent = "실행 중";
   timeline.replaceChildren();
   addTimeline("사용자 입력 1회", goal);

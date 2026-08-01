@@ -80,6 +80,28 @@ button { cursor: pointer; }
 .goal-form input { flex: 1; min-width: 0; padding: 10px; border: 0; outline: 0; color: var(--ink); background: transparent; font-size: 17px; }
 .goal-form button { flex: 0 0 auto; min-width: 82px; padding: 13px 14px; border: 0; border-radius: 12px; background: var(--ink); color: white; font-weight: 900; }
 .goal-form button:disabled { opacity: .55; cursor: default; }
+.goal-form .ocr-open { min-width: 70px; padding-inline: 10px; border: 1px solid #d8d5d0; background: #fff4ef; color: var(--accent); }
+.ocr-panel { position: absolute; inset: 12px; z-index: 12; overflow-y: auto; padding: 20px; border: 1px solid #ddd7d1; border-radius: 20px; background: rgba(255,253,249,.985); box-shadow: 0 28px 80px rgba(23,25,29,.22); }
+.ocr-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.ocr-panel > header span, .ocr-panel > header strong { display: block; }
+.ocr-panel > header span { color: var(--accent); font-size: 11px; font-weight: 900; }
+.ocr-panel > header strong { margin-top: 5px; font-size: 20px; letter-spacing: -.04em; }
+.ocr-panel > header button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #ece9e5; color: var(--ink); font-size: 22px; }
+.ocr-privacy { margin: 12px 0 16px; padding: 10px 12px; border-radius: 10px; background: #f3f0eb; color: #676b72; font-size: 11px; line-height: 1.5; }
+.ocr-loading { min-height: 330px; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+.ocr-loading i { width: 44px; height: 44px; border: 4px solid #eadfd8; border-top-color: var(--accent); border-radius: 50%; animation: ocr-spin .8s linear infinite; }
+@keyframes ocr-spin { to { transform: rotate(360deg); } }
+.ocr-review { display: grid; gap: 12px; }
+.ocr-review section { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 13px; border: 1px solid #e2ded9; border-radius: 14px; background: white; }
+.ocr-review h2 { grid-column: 1 / -1; margin: 0 0 2px; font-size: 15px; }
+.ocr-review label { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.ocr-review label.wide { grid-column: 1 / -1; }
+.ocr-review input { width: 100%; min-width: 0; height: 39px; padding: 0 10px; border: 1px solid #d9d6d1; border-radius: 9px; outline: 0; background: #fffdfa; color: var(--ink); font-size: 13px; }
+.ocr-review input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,77,50,.1); }
+.ocr-contents { padding: 0 2px; }
+.ocr-warnings, .ocr-error { margin: 0; padding: 10px 12px; border-radius: 10px; background: #fff4e4; color: #865913; font-size: 11px; line-height: 1.5; }
+.ocr-error { background: #fff0ec; color: #99351f; }
+.ocr-submit { min-height: 46px; border: 0; border-radius: 12px; background: var(--ink); color: white; font-weight: 900; }
 .decision-panel { position: relative; margin-top: 11px; padding: 14px 92px 14px 14px; min-height: 136px; overflow: hidden; border: 1px solid #dfe3e7; border-left: 5px solid #98a0aa; border-radius: 15px; background: #f8f9fa; }
 .decision-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .decision-panel header span { color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .05em; }

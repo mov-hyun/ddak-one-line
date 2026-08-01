@@ -20,9 +20,12 @@ from app.schemas import (
     DialogDecisionRequest,
     EmsCustomsRequest,
     ManualSubmitRequest,
+    OcrContactsConfirmRequest,
+    OcrNoteRequest,
     RunAccepted,
     RunRequest,
 )
+from app.ocr import extract_address_note
 from app.tools import configure_tools
 from app.vault import VaultRepository
 
@@ -167,6 +170,52 @@ async def health() -> dict:
         "manual_handoff_available": True,
         "required_fields_complete": not missing_fields,
         "missing_fields": missing_fields,
+    }
+
+
+@app.post("/api/ocr/address-note")
+async def read_address_note(request: OcrNoteRequest) -> dict:
+    try:
+        result = await extract_address_note(request.image_base64, request.mime_type)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="쪽지 글자를 읽지 못했습니다. 사진을 다시 찍어 주세요.") from exc
+    return result.model_dump(mode="json")
+
+
+def _ocr_contact_payload(prefix: str, party: dict, relationship: str) -> dict:
+    country_code = str(party.get("country_code") or "KR").upper()
+    address = str(party.get("address") or "").strip()
+    address_base = str(party.get("address_base") or address).strip()
+    name_ko = str(party.get("name_ko") or "").strip()
+    return {
+        "contact_ref": f"contact:ocr_{prefix}",
+        "relationship": relationship,
+        "aliases": [relationship.replace(" ", ""), name_ko],
+        "name_ko": name_ko,
+        "name_en": str(party.get("name_en") or "").strip(),
+        "address_domestic": address if country_code == "KR" else "",
+        "address_international": address if country_code != "KR" else "",
+        "postal_code": str(party.get("postal_code") or "").strip(),
+        "address_base": address_base,
+        "address_detail": str(party.get("address_detail") or "").strip(),
+        "phone": str(party.get("phone") or "").strip(),
+        "email": str(party.get("email") or "").strip(),
+        "guest_password": "1111" if prefix == "sender" else "",
+    }
+
+
+@app.post("/api/ocr/contacts")
+async def confirm_ocr_contacts(request: OcrContactsConfirmRequest) -> dict:
+    sender = request.sender.model_dump(mode="json")
+    recipient = request.recipient.model_dump(mode="json")
+    vault.upsert_contact(_ocr_contact_payload("sender", sender, "쪽지 보내는 분"))
+    vault.upsert_contact(_ocr_contact_payload("recipient", recipient, "쪽지 받는 분"))
+    return {
+        "status": "ready",
+        "goal": f"쪽지 받는 분에게 소포를 보내고 싶어. 내용물: {request.contents.strip()}.",
+        "recipient_label": recipient.get("name_ko") or recipient.get("name_en") or "쪽지 받는 분",
     }
 
 

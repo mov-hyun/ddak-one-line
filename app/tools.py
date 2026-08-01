@@ -148,7 +148,12 @@ async def stage_postal_parcel(
     """
     vault, adapters, event_hub = _dependencies()
     run_id = current_run_id.get()
-    sender = vault.get_contact("contact:self")
+    sender_ref = (
+        "contact:ocr_sender"
+        if recipient_ref == "contact:ocr_recipient"
+        else "contact:self"
+    )
+    sender = vault.get_contact(sender_ref)
     recipient = vault.get_contact(recipient_ref)
     if sender is None or recipient is None:
         return json.dumps(

@@ -59,10 +59,43 @@
       </div>
 
       <form id="bar" class="goal-form" autocomplete="off">
+        <button id="ocrOpen" class="ocr-open" type="button" aria-label="주소 쪽지 사진 읽기">쪽지 사진</button>
+        <input id="ocrFile" type="file" accept="image/jpeg,image/png,image/webp" hidden>
         <label class="sr-only" for="q">하고 싶은 일</label>
         <input id="q" type="text" value="큰딸에게 사과를 소포로 부치고 싶어." maxlength="120">
         <button id="runButton" type="submit">딱 실행</button>
       </form>
+
+      <aside id="ocrPanel" class="ocr-panel" aria-label="주소 쪽지 확인" hidden>
+        <header>
+          <div><span>주소 쪽지 읽기</span><strong>사진에서 읽은 내용을 확인하세요</strong></div>
+          <button id="ocrClose" type="button" aria-label="닫기">×</button>
+        </header>
+        <p class="ocr-privacy">선택한 사진은 글자 인식에만 사용하며 이 앱에 파일로 저장하지 않습니다.</p>
+        <div id="ocrLoading" class="ocr-loading" hidden><i></i><strong>보내는 분과 받는 분을 구분하고 있어요</strong></div>
+        <form id="ocrReviewForm" class="ocr-review" hidden>
+          <section>
+            <h2>보내는 분</h2>
+            <label>이름<input id="ocrSenderName" required></label>
+            <label>우편번호<input id="ocrSenderPostal" inputmode="numeric" required></label>
+            <label class="wide">주소<input id="ocrSenderAddress" required></label>
+            <label class="wide">상세주소<input id="ocrSenderDetail"></label>
+            <label class="wide">연락처<input id="ocrSenderPhone" inputmode="tel" required></label>
+          </section>
+          <section>
+            <h2>받는 분</h2>
+            <label>이름<input id="ocrRecipientName" required></label>
+            <label>우편번호<input id="ocrRecipientPostal" inputmode="numeric" required></label>
+            <label class="wide">주소<input id="ocrRecipientAddress" required></label>
+            <label class="wide">상세주소<input id="ocrRecipientDetail"></label>
+            <label class="wide">연락처<input id="ocrRecipientPhone" inputmode="tel" required></label>
+          </section>
+          <label class="ocr-contents">보낼 물건<input id="ocrContents" value="사과" required></label>
+          <p id="ocrWarnings" class="ocr-warnings" hidden></p>
+          <button id="ocrSubmit" class="ocr-submit" type="submit">이 정보로 접수 준비</button>
+        </form>
+        <div id="ocrError" class="ocr-error" hidden></div>
+      </aside>
 
       <section id="decisionPanel" class="decision-panel" aria-live="polite" hidden>
         <header><span>발송 판단</span><strong id="decisionStatus">확인 중</strong></header>

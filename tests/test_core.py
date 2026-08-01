@@ -9,7 +9,8 @@ from app.agent import AGENT_INSTRUCTIONS, _meter_response, build_agent
 from app.budget import CostGuard
 from app.config import settings
 from app.events import EventHub
-from app.main import _run_messages
+from app.main import _ocr_contact_payload, _run_messages
+from app.schemas import OcrPostalParty
 from app.shipping_policy import ShippingPolicyEngine
 from app.tools import (
     assess_shipment_policy,
@@ -331,6 +332,9 @@ def test_product_ui_is_bright_two_thirds_live_workspace() -> None:
     assert 'id="emsCustomsDescription"' in html
     assert 'id="emsHsCode"' in html
     assert 'id="emsQuantity"' in html
+    assert 'id="ocrOpen"' in html
+    assert 'id="ocrFile"' in html
+    assert 'id="ocrReviewForm"' in html
     assert "EMS 계속하기" in html
     assert 'href="/raw"' not in html
     assert "/ws/run" in javascript
@@ -345,6 +349,8 @@ def test_product_ui_is_bright_two_thirds_live_workspace() -> None:
     assert "customs_description_en" in javascript
     assert "hs_code" in javascript
     assert "showPolicyDecision" in javascript
+    assert "/api/ocr/address-note" in javascript
+    assert "/api/ocr/contacts" in javascript
     assert ".decision-panel.is-blocked" in styles
     assert "grid-template-columns: minmax(0, 2fr)" in styles
     assert ".browser-screen" in styles
@@ -352,6 +358,23 @@ def test_product_ui_is_bright_two_thirds_live_workspace() -> None:
     assert "Math.min(screen.clientWidth / viewport.width" in javascript
     assert "click_preview" in adapter
     assert "phone-frame" not in html
+
+
+def test_ocr_contact_allows_blank_country_and_defaults_to_domestic() -> None:
+    party = OcrPostalParty(
+        name_ko="테스트수신인",
+        address="가상시 가상구 테스트로 1",
+        postal_code="00000",
+        phone="010-0000-0000",
+        country_code="",
+    )
+    payload = _ocr_contact_payload(
+        "recipient",
+        party.model_dump(mode="json"),
+        "쪽지 받는 분",
+    )
+    assert payload["address_domestic"] == "가상시 가상구 테스트로 1"
+    assert payload["address_international"] == ""
 
 
 def test_ems_customs_values_are_normalized_without_product_constants() -> None:
